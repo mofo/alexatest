@@ -1,0 +1,6 @@
+output*
+speak*
+*.swp
+.DS_Store
+.idea
+*.pyc
