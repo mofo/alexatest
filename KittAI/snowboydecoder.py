@@ -16,6 +16,7 @@ TOP_DIR = os.path.dirname(os.path.abspath(__file__))
 RESOURCE_FILE = os.path.join(TOP_DIR, "resources/common.res")
 DETECT_DING = os.path.join(TOP_DIR, "resources/ding.wav")
 DETECT_DONG = os.path.join(TOP_DIR, "resources/dong.wav")
+DETECT_SSUP = os.path.join(TOP_DIR, "resources/ssup2.wav")
 
 
 class RingBuffer(object):
@@ -34,7 +35,7 @@ class RingBuffer(object):
         return tmp
 
 
-def play_audio_file(fname=DETECT_DONG):
+def play_audio_file(fname=DETECT_SSUP):
     """Simple callback function to play a wave file. By default it plays
     a Ding sound.
 
@@ -76,11 +77,6 @@ class HotwordDetector(object):
                  sensitivity=[],
                  audio_gain=1):
 
-        def audio_callback(in_data, frame_count, time_info, status):
-            self.ring_buffer.extend(in_data)
-            play_data = chr(0) * len(in_data)
-            return play_data, pyaudio.paContinue
-
         tm = type(decoder_model)
         ts = type(sensitivity)
         if tm is not list:
@@ -114,8 +110,12 @@ class HotwordDetector(object):
             channels=self.detector.NumChannels(),
             rate=self.detector.SampleRate(),
             frames_per_buffer=2048,
-            stream_callback=audio_callback)
+            stream_callback=self.audio_callback)
 
+    def audio_callback(self, in_data, frame_count, time_info, status):
+        self.ring_buffer.extend(in_data)
+        play_data = chr(0) * len(in_data)
+        return play_data, pyaudio.paContinue
 
     def start(self, detected_callback=play_audio_file,
               interrupt_check=lambda: False,
@@ -176,6 +176,20 @@ class HotwordDetector(object):
                     callback()
 
         logger.debug("finished.")
+
+    def pause(self):
+        self.stream_in.stop_stream()
+        self.stream_in.close()
+
+    def resume(self):
+        self.stream_in = self.audio.open(
+            input=True, output=False,
+            format=self.audio.get_format_from_width(
+                self.detector.BitsPerSample() / 8),
+            channels=self.detector.NumChannels(),
+            rate=self.detector.SampleRate(),
+            frames_per_buffer=2048,
+            stream_callback=self.audio_callback)
 
     def terminate(self):
         """

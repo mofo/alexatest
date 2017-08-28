@@ -16,6 +16,7 @@ from .objectdict import ObjectDict
 from .multipart import MultipartParser
 
 _LOG = logging.getLogger(__name__)
+_LOG.setLevel(0)
 
 _FOUR_MINUTES = 240
 _SIMPLE_AVS_BOUNDARY = 'simple-avs-message-boundary'
@@ -91,7 +92,7 @@ class ChunkIterable:
                     yield ret
             yield ret
         return my_iterator()
-                    
+
 class AvsConnection(object):
     """ handles all the comms with the AVS API """
 
@@ -340,6 +341,8 @@ class AvsConnection(object):
 
         _LOG.info('Sending event %s from %s',
                   header['name'], header['namespace'])
+
+        print ('Sending event :' + header['name'] + ' from :' + header['namespace'])
 
         stream_id = self._send_request('POST', '/events', body=body_string)
         response = self._get_response(stream_id)

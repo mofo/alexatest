@@ -2,8 +2,8 @@
 
 """ basic example demonstrating client usage """
 
-from __future__ import print_function
-from __future__ import absolute_import
+#from __future__ import print_function
+#from __future__ import absolute_import
 #from __future__ import unicode_literals
 import os
 import sys
@@ -44,6 +44,7 @@ rate = 16000
 
 interrupted = False
 moreExpected = False
+mediaPlayer = vlc.MediaPlayer()
 
 def state_callback(event, player):
     global audioplaying
@@ -110,22 +111,46 @@ def fiveSecRecogniser():
     print('Sending Alexa a voice request')
     avs.speech_recognizer.recognize(audio_data=request_data,
                                     profile='NEAR_FIELD')
+playtoken = None
 
-def playEvent(playevent):
+def startPlaying(playevent):
+    global mediaPlayer, avs, playtoken
 
     print("play url event...")
     audio_url = playevent['audio_data']
-    p = vlc.MediaPlayer(audio_url)
-    p.play()
-    time.sleep(10)
+    mediaPlayer.set_mrl(audio_url)
+    mediaPlayer.play()
+
+    playtoken= playevent.token
+
+    avs.audio_player.update_state(token=playevent.token, offset_ms=0, player_activity='PLAYING')
+    avs.audio_player.playback_started(playevent.token, 0)
+
+def stopPlaying(playevent):
+    global mediaPlayer, avs, playtoken
+    print ("getting a stop streaming")
+    mediaPlayer.stop()
+    avs.audio_player.update_state(token=playevent.token, offset_ms=0, player_activity='STOPPED')
+    avs.audio_player.playback_stopped(playtoken, 0)
+    playtoken = None
 
 def play_audio(file):
-
     os.system('play ' + file)
 
 def signal_handler():
-    global interrupted
-    interrupted = True
+    global interrupted, detector, moreExpected
+
+    detector.pause()
+
+    snowboydecoder.play_audio_file()
+    
+    fiveSecRecogniser()
+
+    while moreExpected:
+        moreExpected = False
+        fiveSecRecogniser()
+
+    detector.resume()
 
 def interrupt_callback():
     global interrupted
@@ -136,7 +161,7 @@ def miccallback(indata, frames, time, status):
     audioData = np.append(audioData, indata)
 
 def hotwordthread():
-    global moreExpected
+    global moreExpected, detector
 
     detector = snowboydecoder.HotwordDetector('/Users/gian/Documents/MyDocuments/Technical/Projects/Audio/SmartSpeaker/BeatsAlexa/KittAI/resources/beatsbox.pmdl', sensitivity=0.65)
     print('Listening... Press Ctrl+C to exit')
@@ -149,16 +174,8 @@ def hotwordthread():
     print ("Hot Word decoder terminating...")
     detector.terminate()
 
-    time.sleep(.5)
-
-    fiveSecRecogniser()
-
-    while moreExpected:
-        moreExpected = False
-        fiveSecRecogniser()
-
 def main():
-    global audioData, myrecording, avs, moreExpected
+    global audioData, myrecording, avs, moreExpected, interrupted
     """ basic example demonstrating client usage """
     avs = None
 
@@ -200,21 +217,27 @@ def main():
     avs.speech_recognizer.stop_capture_event += handle_stop
     avs.speech_recognizer.expect_speech_event += handle_expect
 
-    avs.audio_player.play_event += playEvent
+    avs.audio_player.play_event += startPlaying
+    avs.audio_player.stop_event += stopPlaying
 
     print('Connecting to AVS')
     avs.connect()
 
     rec_thread = threading.Thread(target=hotwordthread)
+
     rec_thread.start()
 
     print('rec_thread started')
 
     while True:
         a = sys.stdin.read(1)
-        if(a in ('q\n', 'Q\n')):
+        a = a.strip()
+
+        if(a in ('q', 'Q')):
             print('Reading input - ' + a)
             break
+
+    interrupted = True
 
     print('Shutting down')
 

@@ -172,6 +172,7 @@ class AudioPlayer(object):
             'message_id': header['messageId'],
             'play_behavior': payload.get('playBehavior', None),
             'audio_item': payload['audioItem'],
+            'token': audio_stream['token'],
             'raw_message': message,
             'audio_data': audio_url
             })
@@ -182,9 +183,15 @@ class AudioPlayer(object):
         self.play_event(play_request)
 
     def _handle_stop(self, message):
-        header = message['directive']['header']
+        directive = message['directive']
+        header = directive['header']
+        payload = directive['payload']
+        #audio_item = payload['audioItem']
+        #audio_stream = audio_item['stream']
+
         stop_request = ObjectDict({
             'message_id': header['messageId'],
+            #'token': audio_stream['token'],
             'raw_message': message})
 
         if 'dialogRequestId' in header:
