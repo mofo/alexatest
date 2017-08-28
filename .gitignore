@@ -1,5 +1,5 @@
 output*
-speak*
+*.mp3
 *.swp
 .DS_Store
 .idea
